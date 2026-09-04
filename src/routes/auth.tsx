@@ -21,12 +21,31 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+function friendlyError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("weak") || m.includes("pwned") || m.includes("easy to guess"))
+    return "Kata sandi terlalu mudah ditebak. Gunakan minimal 8 karakter dengan kombinasi huruf, angka, dan simbol.";
+  if (m.includes("invalid login credentials"))
+    return "Email atau kata sandi salah. Jika dulu Anda mendaftar lewat Google, masuklah dengan tombol Google.";
+  if (m.includes("already registered") || m.includes("user already"))
+    return "Email ini sudah terdaftar. Silakan masuk, atau gunakan tombol Google.";
+  if (m.includes("email not confirmed"))
+    return "Email belum dikonfirmasi. Cek kotak masuk Anda dan klik tautan konfirmasi.";
+  if (m.includes("rate limit") || m.includes("too many"))
+    return "Terlalu banyak percobaan. Coba lagi beberapa menit lagi.";
+  if (m.includes("password should be at least"))
+    return "Kata sandi minimal 8 karakter.";
+  return message;
+}
+
 function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [checkEmail, setCheckEmail] = useState(false);
   const navigate = useNavigate();
   const { session } = useSession();
 
@@ -34,12 +53,22 @@ function AuthPage() {
     if (session) navigate({ to: "/vault" });
   }, [session, navigate]);
 
+  useEffect(() => {
+    setError(null);
+    setCheckEmail(false);
+  }, [mode]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    setError(null);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        if (password.length < 8) {
+          setError("Kata sandi minimal 8 karakter.");
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -48,29 +77,66 @@ function AuthPage() {
           },
         });
         if (error) throw error;
+        // Akun sudah ada sebelumnya: Supabase mengembalikan user tanpa identities.
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          setError("Email ini sudah terdaftar. Silakan masuk, atau gunakan tombol Google.");
+          setMode("login");
+          return;
+        }
+        if (!data.session) {
+          setCheckEmail(true);
+          toast.success("Cek email Anda untuk mengonfirmasi akun.");
+          return;
+        }
         toast.success("Akun dibuat. Silakan lanjut isi brankas data.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal masuk");
+      const msg = friendlyError(err instanceof Error ? err.message : "Gagal memproses");
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const forgot = async () => {
+    if (!email) {
+      setError("Isi email Anda dulu, lalu klik lupa kata sandi.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Tautan atur ulang kata sandi sudah dikirim ke email Anda.");
+    } catch (err) {
+      const msg = friendlyError(err instanceof Error ? err.message : "Gagal mengirim tautan");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
   };
 
   const google = async () => {
+    setError(null);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
-      toast.error("Gagal masuk dengan Google");
+      setError("Gagal masuk dengan Google. Coba lagi.");
       return;
     }
     if (result.redirected) return;
     navigate({ to: "/vault" });
   };
+
 
   return (
     <main className="surface-grid flex min-h-screen items-center justify-center px-4 py-16">
