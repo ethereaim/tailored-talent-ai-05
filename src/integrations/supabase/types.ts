@@ -14,7 +14,231 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      credentials: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          kind: string
+          link: string
+          name: string
+          updated_at: string
+          user_id: string
+          year: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          link?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+          year?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          link?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          year?: string
+        }
+        Relationships: []
+      }
+      educations: {
+        Row: {
+          activities: string
+          created_at: string
+          degree: string
+          end_year: string
+          field: string
+          gpa: string
+          id: string
+          institution: string
+          start_year: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activities?: string
+          created_at?: string
+          degree?: string
+          end_year?: string
+          field?: string
+          gpa?: string
+          id?: string
+          institution?: string
+          start_year?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activities?: string
+          created_at?: string
+          degree?: string
+          end_year?: string
+          field?: string
+          gpa?: string
+          id?: string
+          institution?: string
+          start_year?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generated_cvs: {
+        Row: {
+          created_at: string
+          cv: Json
+          id: string
+          job_company: string
+          job_data: Json
+          job_source: string
+          job_title: string
+          match_score: number
+          missing_skills: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cv?: Json
+          id?: string
+          job_company?: string
+          job_data?: Json
+          job_source?: string
+          job_title?: string
+          match_score?: number
+          missing_skills?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cv?: Json
+          id?: string
+          job_company?: string
+          job_data?: Json
+          job_source?: string
+          job_title?: string
+          match_score?: number
+          missing_skills?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          linkedin_url: string
+          location: string
+          phone: string
+          portfolio_url: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id: string
+          linkedin_url?: string
+          location?: string
+          phone?: string
+          portfolio_url?: string
+          summary?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          linkedin_url?: string
+          location?: string
+          phone?: string
+          portfolio_url?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      skills: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          level: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          level?: string
+          name?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          level?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      work_experiences: {
+        Row: {
+          achievements: string
+          company: string
+          created_at: string
+          description: string
+          end_date: string
+          id: string
+          position: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achievements?: string
+          company?: string
+          created_at?: string
+          description?: string
+          end_date?: string
+          id?: string
+          position?: string
+          start_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achievements?: string
+          company?: string
+          created_at?: string
+          description?: string
+          end_date?: string
+          id?: string
+          position?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
