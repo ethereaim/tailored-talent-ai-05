@@ -200,6 +200,16 @@ function AuthPage() {
                 {busy ? "Memproses…" : mode === "login" ? "Masuk" : "Daftar"}
               </Button>
             </form>
+            {mode === "login" && (
+              <button
+                type="button"
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                onClick={forgot}
+                disabled={busy}
+              >
+                Lupa kata sandi?
+              </button>
+            )}
             <button
               type="button"
               className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
