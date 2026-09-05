@@ -152,6 +152,16 @@ function AuthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {error && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            {checkEmail && (
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Kami sudah mengirim tautan konfirmasi ke {email}. Buka email itu untuk mengaktifkan akun.
+              </div>
+            )}
             <Button variant="secondary" className="w-full" onClick={google} type="button">
               Lanjut dengan Google
             </Button>
