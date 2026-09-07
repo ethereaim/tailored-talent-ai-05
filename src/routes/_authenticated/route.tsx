@@ -1,11 +1,15 @@
-import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Outlet, Link, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
+  ssr: false,
+  beforeLoad: async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw redirect({ to: "/auth" });
+    return { user: data.user };
+  },
   component: AuthenticatedLayout,
 });
 
@@ -16,21 +20,8 @@ const nav = [
 ] as const;
 
 function AuthenticatedLayout() {
-  const { session, loading } = useSession();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  useEffect(() => {
-    if (!loading && !session) navigate({ to: "/auth" });
-  }, [loading, session, navigate]);
-
-  if (loading || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Memuat…
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen">
@@ -59,8 +50,11 @@ function AuthenticatedLayout() {
             variant="ghost"
             size="sm"
             onClick={async () => {
+              const queryClient = Route.useRouteContext().queryClient;
+              await queryClient.cancelQueries();
+              queryClient.clear();
               await supabase.auth.signOut();
-              navigate({ to: "/auth" });
+              navigate({ to: "/auth", replace: true });
             }}
           >
             Keluar
