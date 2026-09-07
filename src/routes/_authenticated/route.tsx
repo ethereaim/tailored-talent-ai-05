@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, Link, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const nav = [
 
 function AuthenticatedLayout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -50,7 +52,6 @@ function AuthenticatedLayout() {
             variant="ghost"
             size="sm"
             onClick={async () => {
-              const queryClient = Route.useRouteContext().queryClient;
               await queryClient.cancelQueries();
               queryClient.clear();
               await supabase.auth.signOut();
