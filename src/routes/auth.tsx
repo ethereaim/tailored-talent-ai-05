@@ -16,6 +16,8 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Masuk atau daftar untuk menyimpan brankas data karier dan membuat CV ATS." },
       { property: "og:title", content: "Masuk | Tailor CV AI" },
       { property: "og:description", content: "Masuk untuk membuat CV yang disesuaikan dengan lowongan." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: AuthPage,
@@ -89,9 +91,12 @@ function AuthPage() {
           return;
         }
         toast.success("Akun dibuat. Silakan lanjut isi brankas data.");
+        navigate({ to: "/vault", replace: true });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (!data.session) throw new Error("Sesi masuk tidak berhasil dibuat. Silakan coba lagi.");
+        navigate({ to: "/vault", replace: true });
       }
     } catch (err) {
       const msg = friendlyError(err instanceof Error ? err.message : "Gagal memproses");
@@ -125,16 +130,30 @@ function AuthPage() {
   };
 
   const google = async () => {
+    setBusy(true);
     setError(null);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setError("Gagal masuk dengan Google. Coba lagi.");
-      return;
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/auth`,
+        extraParams: { prompt: "select_account" },
+      });
+      if (result.error) {
+        throw result.error;
+      }
+      if (result.redirected) return;
+
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError || !data.user) {
+        throw userError ?? new Error("Sesi Google belum tersedia.");
+      }
+      navigate({ to: "/vault", replace: true });
+    } catch (err) {
+      const msg = friendlyError(err instanceof Error ? err.message : "Gagal masuk dengan Google");
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(false);
     }
-    if (result.redirected) return;
-    navigate({ to: "/vault" });
   };
 
 
@@ -162,8 +181,8 @@ function AuthPage() {
                 Kami sudah mengirim tautan konfirmasi ke {email}. Buka email itu untuk mengaktifkan akun.
               </div>
             )}
-            <Button variant="secondary" className="w-full" onClick={google} type="button">
-              Lanjut dengan Google
+            <Button variant="secondary" className="w-full" onClick={google} type="button" disabled={busy}>
+              {busy ? "Menghubungkan…" : "Lanjut dengan Google"}
             </Button>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" /> atau <span className="h-px flex-1 bg-border" />
