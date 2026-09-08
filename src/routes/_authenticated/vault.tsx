@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
+import { VaultImport } from "@/components/vault-import";
 
 export const Route = createFileRoute("/_authenticated/vault")({
   head: () => ({
@@ -101,7 +102,12 @@ function VaultPage() {
           <TabsTrigger value="edu">Pendidikan</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="creds">Sertifikasi & Proyek</TabsTrigger>
+          <TabsTrigger value="import">Impor Otomatis</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="import" className="mt-6">
+          <VaultImport userId={userId} />
+        </TabsContent>
 
         <TabsContent value="profile" className="mt-6">
           <ProfileForm userId={userId} />
