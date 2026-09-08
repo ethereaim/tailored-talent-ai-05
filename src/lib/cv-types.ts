@@ -49,6 +49,37 @@ export type TailorResult = {
   cv: TailoredCv;
 };
 
+export type VaultImportData = {
+  profile: {
+    full_name: string;
+    email: string;
+    phone: string;
+    location: string;
+    linkedin_url: string;
+    portfolio_url: string;
+    summary: string;
+  };
+  work_experiences: {
+    company: string;
+    position: string;
+    start_date: string;
+    end_date: string;
+    description: string;
+    achievements: string;
+  }[];
+  educations: {
+    institution: string;
+    degree: string;
+    field: string;
+    start_year: string;
+    end_year: string;
+    gpa: string;
+    activities: string;
+  }[];
+  skills: { name: string; category: string; level: string }[];
+  credentials: { kind: string; name: string; description: string; year: string; link: string }[];
+};
+
 export const emptyJob: JobData = {
   title: "",
   company: "",
