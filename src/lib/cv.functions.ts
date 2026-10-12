@@ -69,7 +69,7 @@ const JobSchema = z.object({
 const TAILOR_SYSTEM = `You are a strict CV tailoring assistant. You MUST ONLY use facts provided in the user's Master Data.
 Do NOT fabricate companies, job titles, dates, metrics, degrees, certifications, or skills.
 You may only rephrase sentence structures, reorder items by relevance, and emphasize keywords from the job description.
-Every skill you list must already exist in the Master Data. Write the CV in the same language as the job description.
+Every skill you list must already exist in the Master Data. Follow the OUTPUT LANGUAGE rule below.
 Return strict JSON:
 {
  "match_score": number 0-100,
@@ -86,9 +86,18 @@ Return strict JSON:
  }
 }`;
 
+const RefFile = z.object({ name: z.string(), mime: z.string(), dataUrl: z.string() });
+
+const TailorInput = z.object({
+  job: JobSchema,
+  language: z.enum(["id", "ar"]).default("id"),
+  style_notes: z.string().max(3000).optional(),
+  references: z.array(RefFile).max(6).optional(),
+});
+
 export const tailorCv = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ job: JobSchema }).parse(data))
+  .inputValidator((data: unknown) => TailorInput.parse(data))
   .handler(async ({ data, context }): Promise<TailorResult> => {
     const { aiJson } = await import("./ai.server");
     const supabase = context.supabase;
@@ -114,17 +123,36 @@ export const tailorCv = createServerFn({ method: "POST" })
       throw new Error("Brankas data masih kosong. Isi dulu pengalaman atau pendidikan Anda.");
     }
 
+    const langName = data.language === "ar" ? "Arabic (Modern Standard Arabic, فصحى)" : "Bahasa Indonesia";
+    const refs = data.references ?? [];
+    const extra = `
+OUTPUT LANGUAGE: Write every CV text field (headline, summary, bullets, degrees, skills, details) in ${langName}, regardless of the job description language. Translating the user's facts is allowed; keep person names, company names, institution names, emails, and URLs as written. missing_skills and highlights must also be in ${langName}.
+${refs.length ? `REFERENCE CVs: The user attached ${refs.length} example CV(s). Learn ONLY their style: tone, section emphasis, bullet length and phrasing patterns, summary style. NEVER copy any facts, names, companies, numbers, or skills from the reference CVs — they belong to other people.` : ""}
+${data.style_notes?.trim() ? `USER STYLE PREFERENCES (style only, never a source of facts): ${data.style_notes.trim()}` : ""}`;
+
+    const userContent: Array<Record<string, unknown>> = [
+      {
+        type: "text",
+        text: `MASTER DATA (satu-satunya sumber fakta):\n${JSON.stringify(master)}\n\nJOB DESCRIPTION:\n${JSON.stringify(data.job)}`,
+      },
+    ];
+    refs.forEach((f, i) => {
+      userContent.push({ type: "text", text: `CONTOH CV REFERENSI #${i + 1} (gaya saja, bukan fakta):` });
+      userContent.push(
+        f.mime.startsWith("image/")
+          ? { type: "image_url", image_url: { url: f.dataUrl } }
+          : { type: "file", file: { filename: f.name, file_data: f.dataUrl } },
+      );
+    });
+
     const result = await aiJson<{
       match_score?: number;
       missing_skills?: string[];
       highlights?: string[];
       cv?: Partial<TailoredCv>;
     }>([
-      { role: "system", content: TAILOR_SYSTEM },
-      {
-        role: "user",
-        content: `MASTER DATA (satu-satunya sumber fakta):\n${JSON.stringify(master)}\n\nJOB DESCRIPTION:\n${JSON.stringify(data.job)}`,
-      },
+      { role: "system", content: TAILOR_SYSTEM + extra },
+      { role: "user", content: userContent },
     ]);
 
     const cv: TailoredCv = {
