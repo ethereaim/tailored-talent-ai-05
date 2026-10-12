@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { extractJob, tailorCv } from "@/lib/cv.functions";
@@ -43,6 +43,71 @@ function GeneratePage() {
   const [job, setJob] = useState<JobData>(emptyJob);
   const [result, setResult] = useState<TailorResult | null>(null);
   const [cv, setCv] = useState<TailoredCv | null>(null);
+  const [tab, setTab] = useState("text");
+  const [language, setLanguage] = useState<"id" | "ar">("id");
+  const [styleNotes, setStyleNotes] = useState("");
+  const [refs, setRefs] = useState<{ name: string; mime: string; dataUrl: string }[]>([]);
+
+  const readAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(new Error("Gagal membaca berkas"));
+      r.readAsDataURL(file);
+    });
+
+  const addRefs = async (list: FileList | null) => {
+    if (!list) return;
+    const incoming = Array.from(list);
+    const room = 6 - refs.length;
+    if (incoming.length > room) toast.error("Maksimal 6 contoh CV");
+    const next: typeof refs = [];
+    for (const f of incoming.slice(0, Math.max(0, room))) {
+      if (!/^(application\/pdf|image\/(png|jpe?g|webp))$/.test(f.type)) {
+        toast.error(`${f.name}: hanya PDF atau JPG/PNG`);
+        continue;
+      }
+      if (f.size > 8 * 1024 * 1024) {
+        toast.error(`${f.name}: maksimal 8 MB`);
+        continue;
+      }
+      next.push({ name: f.name, mime: f.type, dataUrl: await readAsDataUrl(f) });
+    }
+    setRefs((r) => [...r, ...next].slice(0, 6));
+  };
+
+  // Paste poster langsung (Ctrl+V) saat tab Poster aktif
+  useEffect(() => {
+    if (step !== "input" || tab !== "image") return;
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.type.startsWith("image/"));
+      const file = item?.getAsFile();
+      if (file) {
+        e.preventDefault();
+        onFile(file);
+        toast.success("Poster ditempel");
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  });
+
+  const pasteFromClipboard = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const it of items) {
+        const type = it.types.find((t) => t.startsWith("image/"));
+        if (type) {
+          const blob = await it.getType(type);
+          onFile(new File([blob], "poster.png", { type }));
+          return;
+        }
+      }
+      toast.error("Tidak ada gambar di clipboard. Salin gambar posternya dulu.");
+    } catch {
+      toast.error("Browser menolak akses clipboard. Klik kotak di atas lalu tekan Ctrl+V.");
+    }
+  };
 
   const runExtract = async (mode: "text" | "url" | "image") => {
     setBusy(true);
@@ -62,7 +127,9 @@ function GeneratePage() {
   const runTailor = async () => {
     setBusy(true);
     try {
-      const res = await tailor({ data: { job } });
+      const res = await tailor({
+        data: { job, language, style_notes: styleNotes, references: refs },
+      });
       setResult(res);
       setCv(res.cv);
       setStep("result");
@@ -95,7 +162,7 @@ function GeneratePage() {
       {step === "input" && (
         <Card>
           <CardContent className="p-6">
-            <Tabs defaultValue="text">
+            <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
                 <TabsTrigger value="text">Teks</TabsTrigger>
                 <TabsTrigger value="url">Link</TabsTrigger>
@@ -129,17 +196,51 @@ function GeneratePage() {
               </TabsContent>
 
               <TabsContent value="image" className="mt-5 space-y-4">
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onFile(file);
+                <div
+                  tabIndex={0}
+                  className="flex min-h-40 cursor-text flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center outline-none focus:border-primary"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) onFile(f);
                   }}
-                />
-                {image && (
-                  <img src={image} alt="Pratinjau poster lowongan" className="max-h-72 rounded-lg border" />
-                )}
+                >
+                  {image ? (
+                    <img src={image} alt="Pratinjau poster lowongan" className="max-h-72 rounded-lg border" />
+                  ) : (
+                    <>
+                      <p className="font-medium">Tempel poster di sini (Ctrl+V / ⌘+V)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Salin gambar poster dari WhatsApp, Instagram, atau situs loker, lalu tempel. Bisa juga seret gambar ke sini.
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" onClick={pasteFromClipboard}>
+                    Tempel dari clipboard
+                  </Button>
+                  <Button type="button" variant="outline" asChild>
+                    <label className="cursor-pointer">
+                      Pilih file
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) onFile(file);
+                        }}
+                      />
+                    </label>
+                  </Button>
+                  {image && (
+                    <Button type="button" variant="ghost" onClick={() => setImage(null)}>
+                      Hapus
+                    </Button>
+                  )}
+                </div>
                 <Button onClick={() => runExtract("image")} disabled={busy || !image}>
                   {busy ? "Membaca poster…" : "Baca poster"}
                 </Button>
@@ -189,6 +290,69 @@ function GeneratePage() {
               value={job.skills}
               onChange={(v) => setJob({ ...job, skills: v })}
             />
+            <div className="space-y-4 rounded-lg border p-4">
+              <p className="font-medium">Preferensi CV</p>
+              <div className="space-y-2">
+                <Label>Bahasa CV</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={language === "id" ? "default" : "outline"}
+                    onClick={() => setLanguage("id")}
+                  >
+                    Bahasa Indonesia
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={language === "ar" ? "default" : "outline"}
+                    onClick={() => setLanguage("ar")}
+                  >
+                    العربية (Bahasa Arab)
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Contoh CV referensi (opsional, PDF/JPG, maks. 6)</Label>
+                <Input
+                  type="file"
+                  multiple
+                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  disabled={refs.length >= 6}
+                  onChange={(e) => {
+                    void addRefs(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Sistem hanya meniru gaya penulisan & strukturnya — isi CV tetap dari Brankas Data Anda.
+                </p>
+                {refs.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {refs.map((r, i) => (
+                      <Badge key={`${r.name}-${i}`} variant="secondary" className="gap-2">
+                        {r.name}
+                        <button
+                          type="button"
+                          aria-label={`Hapus ${r.name}`}
+                          onClick={() => setRefs(refs.filter((_, j) => j !== i))}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Karakteristik CV yang diinginkan (opsional)</Label>
+                <Textarea
+                  rows={4}
+                  placeholder="Contoh: ringkas 1 halaman, nada formal, tonjolkan pengalaman organisasi, bullet pendek dengan kata kerja aktif…"
+                  value={styleNotes}
+                  onChange={(e) => setStyleNotes(e.target.value)}
+                />
+              </div>
+            </div>
             <div className="flex gap-3">
               <Button onClick={runTailor} disabled={busy}>
                 {busy ? "Menyusun CV…" : "Buat CV tailored"}
@@ -235,7 +399,13 @@ function GeneratePage() {
                 )}
               </CardContent>
             </Card>
-            <Button className="w-full shadow-glow" onClick={() => downloadCvPdf(cv)}>
+            <Button className="w-full shadow-glow" onClick={() => {
+                try {
+                  downloadCvPdf(cv);
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Gagal mengunduh");
+                }
+              }}>
               Unduh PDF ATS
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => setStep("input")}>
@@ -248,7 +418,7 @@ function GeneratePage() {
               <CardTitle className="text-lg">Pratinjau CV</CardTitle>
               <CardDescription>Teks bisa diedit langsung sebelum diunduh.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6" dir={language === "ar" ? "rtl" : "ltr"}>
               <div className="space-y-2">
                 <Label>Ringkasan</Label>
                 <Textarea
