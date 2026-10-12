@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import type { TailoredCv } from "./cv-types";
+import type { CvLanguage, TailoredCv } from "./cv-types";
 
 const MARGIN = 48;
 const WIDTH = 595.28; // A4 portrait points
@@ -27,19 +27,36 @@ const LABELS = {
     soft: "المهارات الشخصية",
     certs: "الشهادات والمشاريع",
   },
+  en: {
+    summary: "Professional Summary", work: "Work Experience", edu: "Education",
+    skills: "Skills", hard: "Hard Skills", soft: "Soft Skills", certs: "Certifications & Projects",
+  },
+  ru: {
+    summary: "Профессиональное резюме", work: "Опыт работы", edu: "Образование",
+    skills: "Навыки", hard: "Технические навыки", soft: "Личные качества", certs: "Сертификаты и проекты",
+  },
+  fr: {
+    summary: "Profil professionnel", work: "Expérience professionnelle", edu: "Formation",
+    skills: "Compétences", hard: "Compétences techniques", soft: "Compétences relationnelles", certs: "Certifications et projets",
+  },
+  es: {
+    summary: "Perfil profesional", work: "Experiencia laboral", edu: "Educación",
+    skills: "Habilidades", hard: "Habilidades técnicas", soft: "Habilidades interpersonales", certs: "Certificaciones y proyectos",
+  },
 };
 
 const esc = (t: string) =>
   t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function printArabicCv(cv: TailoredCv) {
-  const L = LABELS.ar;
+function printUnicodeCv(cv: TailoredCv, language: CvLanguage) {
+  const L = LABELS[language];
+  const separator = language === "ar" ? "، " : ", ";
   const contact = [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin, cv.contact.portfolio]
     .filter(Boolean)
     .map((c) => `<span dir="auto">${esc(c)}</span>`)
     .join(" | ");
   const sec = (title: string, body: string) => (body ? `<h2>${title}</h2>${body}` : "");
-  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${esc(cv.name || "CV")}</title>
+  const html = `<!doctype html><html lang="${language}" dir="${language === "ar" ? "rtl" : "ltr"}"><head><meta charset="utf-8"><title>${esc(cv.name || "CV")}</title>
 <style>
 @page{size:A4;margin:16mm}
 body{font-family:Arial,"Segoe UI",Tahoma,sans-serif;color:#111;font-size:11pt;line-height:1.55;margin:0}
@@ -75,8 +92,8 @@ ${sec(
   )}
 ${sec(
     L.skills,
-    (cv.hard_skills.length ? `<div><b>${L.hard}:</b> ${esc(cv.hard_skills.join("، "))}</div>` : "") +
-      (cv.soft_skills.length ? `<div><b>${L.soft}:</b> ${esc(cv.soft_skills.join("، "))}</div>` : ""),
+    (cv.hard_skills.length ? `<div><b>${L.hard}:</b> ${esc(cv.hard_skills.join(separator))}</div>` : "") +
+      (cv.soft_skills.length ? `<div><b>${L.soft}:</b> ${esc(cv.soft_skills.join(separator))}</div>` : ""),
   )}
 ${sec(
     L.certs,
@@ -87,18 +104,20 @@ ${sec(
 <script>window.onload=()=>{setTimeout(()=>window.print(),300)}</script>
 </body></html>`;
   const w = window.open("", "_blank");
-  if (!w) throw new Error("Izinkan pop-up untuk mengunduh CV bahasa Arab.");
+  if (!w) throw new Error("Izinkan pop-up untuk menyimpan CV sebagai PDF.");
   w.document.open();
   w.document.write(html);
   w.document.close();
 }
 
 export function downloadCvPdf(cv: TailoredCv, fileName = "cv-tailored.pdf") {
-  if (ARABIC.test(JSON.stringify(cv))) {
-    printArabicCv(cv);
+  const text = JSON.stringify(cv);
+  const language = cv.language ?? (ARABIC.test(text) ? "ar" : /[\u0400-\u04FF]/.test(text) ? "ru" : "id");
+  if (language === "ar" || language === "ru" || /[\u0400-\u04FF]/.test(text) || ARABIC.test(text)) {
+    printUnicodeCv(cv, language);
     return;
   }
-  const L = LABELS.id;
+  const L = LABELS[language];
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = MARGIN;
 

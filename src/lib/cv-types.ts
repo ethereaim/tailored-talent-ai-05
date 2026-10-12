@@ -1,3 +1,15 @@
+export const cvLanguages = ["id", "ar", "en", "ru", "fr", "es"] as const;
+export type CvLanguage = (typeof cvLanguages)[number];
+
+export const cvLanguageOptions: { value: CvLanguage; label: string; prompt: string }[] = [
+  { value: "id", label: "Bahasa Indonesia", prompt: "Bahasa Indonesia" },
+  { value: "ar", label: "العربية (Bahasa Arab)", prompt: "Arabic (Modern Standard Arabic, فصحى)" },
+  { value: "en", label: "English", prompt: "English" },
+  { value: "ru", label: "Русский (Rusia)", prompt: "Russian" },
+  { value: "fr", label: "Français (Prancis)", prompt: "French" },
+  { value: "es", label: "Español (Spanyol)", prompt: "Spanish" },
+];
+
 export type JobData = {
   title: string;
   company: string;
@@ -24,6 +36,7 @@ export type CvEducation = {
 };
 
 export type TailoredCv = {
+  language?: CvLanguage;
   name: string;
   headline: string;
   contact: {

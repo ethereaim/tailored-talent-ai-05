@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { extractJob, tailorCv } from "@/lib/cv.functions";
-import { emptyJob, type JobData, type TailorResult, type TailoredCv } from "@/lib/cv-types";
+import { emptyJob, cvLanguageOptions, type CvLanguage, type JobData, type TailorResult, type TailoredCv } from "@/lib/cv-types";
 import { downloadCvPdf } from "@/lib/cv-pdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,8 @@ export const Route = createFileRoute("/_authenticated/generate")({
       },
       { property: "og:title", content: "Generate CV Tailored | TailorCV" },
       { property: "og:description", content: "Dari deskripsi lowongan menjadi CV ATS dalam hitungan menit." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: GeneratePage,
@@ -44,7 +46,7 @@ function GeneratePage() {
   const [result, setResult] = useState<TailorResult | null>(null);
   const [cv, setCv] = useState<TailoredCv | null>(null);
   const [tab, setTab] = useState("text");
-  const [language, setLanguage] = useState<"id" | "ar">("id");
+  const [language, setLanguage] = useState<CvLanguage>("id");
   const [styleNotes, setStyleNotes] = useState("");
   const [refs, setRefs] = useState<{ name: string; mime: string; dataUrl: string }[]>([]);
 
@@ -294,21 +296,18 @@ function GeneratePage() {
               <p className="font-medium">Preferensi CV</p>
               <div className="space-y-2">
                 <Label>Bahasa CV</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={language === "id" ? "default" : "outline"}
-                    onClick={() => setLanguage("id")}
-                  >
-                    Bahasa Indonesia
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={language === "ar" ? "default" : "outline"}
-                    onClick={() => setLanguage("ar")}
-                  >
-                    العربية (Bahasa Arab)
-                  </Button>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Bahasa CV">
+                  {cvLanguageOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={language === option.value}
+                      variant={language === option.value ? "default" : "outline"}
+                      onClick={() => setLanguage(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
                 </div>
               </div>
               <div className="space-y-2">
