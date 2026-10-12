@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep CV language codes and options in the browser-safe CV types module and persist the chosen language inside CV JSON so generation and repeated PDF downloads use the same language.
+- Use browser printing for non-Latin CV PDFs because the default PDF font does not support Arabic or Cyrillic glyphs.

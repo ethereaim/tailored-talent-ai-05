@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { JobData, TailorResult, TailoredCv } from "./cv-types";
+import { cvLanguages, cvLanguageOptions } from "./cv-types";
 
 const ExtractInput = z.object({
   mode: z.enum(["text", "url", "image"]),
@@ -90,7 +91,7 @@ const RefFile = z.object({ name: z.string(), mime: z.string(), dataUrl: z.string
 
 const TailorInput = z.object({
   job: JobSchema,
-  language: z.enum(["id", "ar"]).default("id"),
+  language: z.enum(cvLanguages).default("id"),
   style_notes: z.string().max(3000).optional(),
   references: z.array(RefFile).max(6).optional(),
 });
@@ -123,7 +124,7 @@ export const tailorCv = createServerFn({ method: "POST" })
       throw new Error("Brankas data masih kosong. Isi dulu pengalaman atau pendidikan Anda.");
     }
 
-    const langName = data.language === "ar" ? "Arabic (Modern Standard Arabic, فصحى)" : "Bahasa Indonesia";
+    const langName = cvLanguageOptions.find((option) => option.value === data.language)?.prompt ?? "Bahasa Indonesia";
     const refs = data.references ?? [];
     const extra = `
 OUTPUT LANGUAGE: Write every CV text field (headline, summary, bullets, degrees, skills, details) in ${langName}, regardless of the job description language. Translating the user's facts is allowed; keep person names, company names, institution names, emails, and URLs as written. missing_skills and highlights must also be in ${langName}.
@@ -156,6 +157,7 @@ ${data.style_notes?.trim() ? `USER STYLE PREFERENCES (style only, never a source
     ]);
 
     const cv: TailoredCv = {
+      language: data.language,
       name: result.cv?.name ?? "",
       headline: result.cv?.headline ?? "",
       contact: {
