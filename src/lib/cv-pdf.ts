@@ -164,8 +164,8 @@ export function buildCvPdf(cv: TailoredCv, language: CvLanguage = detectLanguage
     pageBreak(24);
     write(title.toUpperCase(), 11, "bold");
     doc.setDrawColor(120);
-    doc.line(MARGIN, y - 6, WIDTH - MARGIN, y - 6);
-    y += 4;
+    doc.line(MARGIN, y - 8, WIDTH - MARGIN, y - 8);
+    y += 8;
   };
 
   write(cv.name || "CV", 18, "bold");
