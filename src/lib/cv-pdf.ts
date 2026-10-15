@@ -110,13 +110,31 @@ ${sec(
   w.document.close();
 }
 
-export function downloadCvPdf(cv: TailoredCv, fileName = "cv-tailored.pdf") {
+// Characters the built-in Helvetica (WinAnsi) font can render.
+const WIN_ANSI_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+export function needsUnicodePrint(cv: TailoredCv) {
+  for (const ch of JSON.stringify(cv)) {
+    const c = ch.codePointAt(0)!;
+    if (c > 0xff && !WIN_ANSI_EXTRA.includes(ch)) return true;
+  }
+  return false;
+}
+
+function detectLanguage(cv: TailoredCv): CvLanguage {
   const text = JSON.stringify(cv);
-  const language = cv.language ?? (ARABIC.test(text) ? "ar" : /[\u0400-\u04FF]/.test(text) ? "ru" : "id");
-  if (language === "ar" || language === "ru" || /[\u0400-\u04FF]/.test(text) || ARABIC.test(text)) {
+  return cv.language ?? (ARABIC.test(text) ? "ar" : /[\u0400-\u04FF]/.test(text) ? "ru" : "id");
+}
+
+export function downloadCvPdf(cv: TailoredCv, fileName = "cv-tailored.pdf") {
+  const language = detectLanguage(cv);
+  if (language === "ar" || language === "ru" || needsUnicodePrint(cv)) {
     printUnicodeCv(cv, language);
     return;
   }
+  buildCvPdf(cv, language).save(fileName);
+}
+
+export function buildCvPdf(cv: TailoredCv, language: CvLanguage = detectLanguage(cv)) {
   const L = LABELS[language];
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = MARGIN;
@@ -146,11 +164,11 @@ export function downloadCvPdf(cv: TailoredCv, fileName = "cv-tailored.pdf") {
     pageBreak(24);
     write(title.toUpperCase(), 11, "bold");
     doc.setDrawColor(120);
-    doc.line(MARGIN, y - 6, WIDTH - MARGIN, y - 6);
-    y += 4;
+    doc.line(MARGIN, y - 8, WIDTH - MARGIN, y - 8);
+    y += 8;
   };
 
-  write(cv.name || "Nama", 18, "bold");
+  write(cv.name || "CV", 18, "bold");
   if (cv.headline) write(cv.headline, 11);
   const contact = [
     cv.contact.email,
@@ -199,5 +217,5 @@ export function downloadCvPdf(cv: TailoredCv, fileName = "cv-tailored.pdf") {
     cv.certifications.forEach((c) => write(`• ${c.name}${c.detail ? ` — ${c.detail}` : ""}`, 10));
   }
 
-  doc.save(fileName);
+  return doc;
 }
